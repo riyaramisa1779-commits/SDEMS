@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\EvidenceController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -69,6 +70,16 @@ Route::middleware(['auth', 'verified', 'account.locked'])->group(function () {
 
         // Activity Log
         Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log');
+    });
+
+    // ── Evidence Module ───────────────────────────────────────────────────────
+    // Minimum rank 1 required for all evidence routes.
+    Route::prefix('evidence')->name('evidence.')->middleware(['rank:1'])->group(function () {
+        Route::get('/upload',        [EvidenceController::class, 'create'])->name('create');
+        Route::post('/',             [EvidenceController::class, 'store'])->name('store');
+        Route::get('/{evidence}',    [EvidenceController::class, 'show'])->name('show');
+        Route::get('/{evidence}/download', [EvidenceController::class, 'download'])->name('download');
+        Route::get('/{evidence}/preview',  [EvidenceController::class, 'preview'])->name('preview');
     });
 });
 

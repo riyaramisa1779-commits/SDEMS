@@ -17,5 +17,6 @@
     </header>
     @endisset
     <main>{{ $slot }}</main>
+    @stack('scripts')
 </body>
 </html>
