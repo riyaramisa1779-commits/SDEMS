@@ -1,4 +1,4 @@
-<x-app-layout>
+﻿<x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -43,7 +43,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            {{-- ── Left: Preview ──────────────────────────────────────────── --}}
+            {{-- â”€â”€ Left: Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}
             <div class="lg:col-span-2 space-y-6">
 
                 {{-- Preview panel --}}
@@ -119,7 +119,7 @@
 
             </div>
 
-            {{-- ── Right: Metadata + Integrity ────────────────────────────── --}}
+            {{-- â”€â”€ Right: Metadata + Integrity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}
             <div class="space-y-5">
 
                 {{-- Metadata --}}
@@ -136,7 +136,7 @@
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Original Filename</dt>
-                            <dd class="mt-0.5 text-slate-700 dark:text-slate-300 break-all text-xs font-mono">{{ $evidence->original_name ?? '—' }}</dd>
+                            <dd class="mt-0.5 text-slate-700 dark:text-slate-300 break-all text-xs font-mono">{{ $evidence->original_name ?? 'â€”' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">File Size</dt>
@@ -144,11 +144,11 @@
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">MIME Type</dt>
-                            <dd class="mt-0.5 text-slate-700 dark:text-slate-300 text-xs font-mono">{{ $evidence->mime_type ?? '—' }}</dd>
+                            <dd class="mt-0.5 text-slate-700 dark:text-slate-300 text-xs font-mono">{{ $evidence->mime_type ?? 'â€”' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Uploaded By</dt>
-                            <dd class="mt-0.5 text-slate-700 dark:text-slate-300">{{ $evidence->uploader->name ?? '—' }}</dd>
+                            <dd class="mt-0.5 text-slate-700 dark:text-slate-300">{{ $evidence->uploader->name ?? 'â€”' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Uploaded At</dt>
@@ -219,7 +219,7 @@
                             </div>
                             <div>
                                 <dt class="text-xs text-slate-500 dark:text-slate-400">Custodian</dt>
-                                <dd class="text-slate-700 dark:text-slate-300">{{ $evidence->latestCustody->toUser->name ?? '—' }}</dd>
+                                <dd class="text-slate-700 dark:text-slate-300">{{ $evidence->latestCustody->toUser->name ?? 'â€”' }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-slate-500 dark:text-slate-400">Timestamp</dt>
@@ -251,3 +251,4 @@
 
     </div>
 </x-app-layout>
+

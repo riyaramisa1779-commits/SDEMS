@@ -172,6 +172,7 @@ class Evidence extends Model
 
     /**
      * Compute the SHA-256 hash of the evidence file and store it.
+     * Used by investigators (rank 3–4) and the background job.
      * Returns the EvidenceHash record, or null if the file is missing.
      */
     public function generateHash(): ?EvidenceHash
@@ -202,7 +203,30 @@ class Evidence extends Model
     }
 
     /**
-     * Verify the current file matches the latest stored hash.
+     * Compute the Keccak-256 hash of the evidence file.
+     *
+     * Used exclusively by Auditors (rank 5+) for system-wide integrity audits.
+     * Keccak-256 is used alongside SHA-256 to provide a second independent
+     * verification algorithm — if both match, tampering is extremely unlikely.
+     *
+     * Returns the hex digest string, or null if the file is missing.
+     */
+    public function generateKeccakHash(): ?string
+    {
+        $disk = Storage::disk('evidence');
+
+        if (! $disk->exists($this->file_path)) {
+            return null;
+        }
+
+        // Read file content for Keccak (library requires string input)
+        $content = $disk->get($this->file_path);
+
+        return \kornrunner\Keccak::hash($content, 256);
+    }
+
+    /**
+     * Verify the current file matches the latest stored SHA-256 hash.
      * Returns true = intact, false = tampered or file missing.
      */
     public function verifyIntegrity(): bool
@@ -230,6 +254,32 @@ class Evidence extends Model
 
         // hash_equals is timing-safe — prevents timing attacks
         return hash_equals($latest->hash_value, $current);
+    }
+
+    /**
+     * Verify integrity using Keccak-256 (Auditor-level verification).
+     *
+     * Computes a fresh Keccak-256 hash and compares it against the
+     * stored Keccak hash record (hash_type = 'keccak256').
+     * Returns null if no Keccak hash record exists yet.
+     */
+    public function verifyKeccakIntegrity(): ?bool
+    {
+        $keccakRecord = $this->hashes()
+            ->where('hash_type', 'keccak256')
+            ->first();
+
+        if (! $keccakRecord) {
+            return null; // No Keccak hash stored yet
+        }
+
+        $current = $this->generateKeccakHash();
+
+        if ($current === null) {
+            return false;
+        }
+
+        return hash_equals($keccakRecord->hash_value, $current);
     }
 
     // ── Scopes ────────────────────────────────────────────────────────────────

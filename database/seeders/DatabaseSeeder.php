@@ -91,13 +91,51 @@ class DatabaseSeeder extends Seeder
         );
         $regularUser->assignRole('user');
 
+        // ── Senior Investigator (rank 3) ───────────────────────────────────────
+        $investigatorRole = Role::firstOrCreate(['name' => 'investigator', 'guard_name' => 'web']);
+        $investigatorRole->syncPermissions(['profile.edit']);
+
+        $investigator = User::firstOrCreate(
+            ['email' => 'investigator@sdems.local'],
+            [
+                'name'               => 'Senior Investigator',
+                'password'           => Hash::make('Invest@SDEMS#2024!'),
+                'rank'               => 3,
+                'is_active'          => true,
+                'email_verified_at'  => now(),
+                'password_changed_at' => now(),
+                'password_expires_at' => now()->addDays(90),
+            ]
+        );
+        $investigator->assignRole('investigator');
+
+        // ── Legal Consultant / Auditor (rank 5) ────────────────────────────────
+        $auditorRole = Role::firstOrCreate(['name' => 'auditor', 'guard_name' => 'web']);
+        $auditorRole->syncPermissions(['profile.edit', 'activity-log.view']);
+
+        $auditor = User::firstOrCreate(
+            ['email' => 'auditor@sdems.local'],
+            [
+                'name'               => 'Legal Consultant',
+                'password'           => Hash::make('Audit@SDEMS#2024!'),
+                'rank'               => 5,
+                'is_active'          => true,
+                'email_verified_at'  => now(),
+                'password_changed_at' => now(),
+                'password_expires_at' => now()->addDays(90),
+            ]
+        );
+        $auditor->assignRole('auditor');
+
         $this->command->info('✅ Roles, permissions, and default users seeded.');
         $this->command->table(
             ['Email', 'Role', 'Rank', 'Password'],
             [
-                ['superadmin@sdems.local', 'super-admin', 10, 'Admin@SDEMS#2024!'],
-                ['admin@sdems.local',      'admin',        8, 'Admin@SDEMS#2024!'],
-                ['user@sdems.local',       'user',         1, 'User@SDEMS#2024!'],
+                ['superadmin@sdems.local',  'super-admin', 10, 'Admin@SDEMS#2024!'],
+                ['admin@sdems.local',       'admin',        8, 'Admin@SDEMS#2024!'],
+                ['auditor@sdems.local',     'auditor',      5, 'Audit@SDEMS#2024!'],
+                ['investigator@sdems.local','investigator', 3, 'Invest@SDEMS#2024!'],
+                ['user@sdems.local',        'user',         1, 'User@SDEMS#2024!'],
             ]
         );
 

@@ -81,6 +81,21 @@
         </a>
         @endrole
 
+        {{-- Section: Evidence --}}
+        <p class="px-3 pt-4 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">Evidence</p>
+
+        <a href="{{ route('custody.index') }}"
+           class="nav-item {{ request()->routeIs('custody.*') ? 'nav-item-active' : 'nav-item-inactive' }}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+            </svg>
+            <span>Chain of Custody</span>
+            @php $cocCount = \App\Models\Evidence::count(); @endphp
+            @if($cocCount > 0)
+            <span class="ml-auto text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">{{ $cocCount }}</span>
+            @endif
+        </a>
+
         {{-- Section: Monitoring --}}
         <p class="px-3 pt-4 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">Monitoring</p>
 
@@ -383,3 +398,4 @@ function sdemsApp() {
 
 </body>
 </html>
+

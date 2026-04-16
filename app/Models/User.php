@@ -192,6 +192,58 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->canManageEvidenceOnCase($case);
     }
 
+    // ─── Rank 5 — Legal Consultant / Auditor ─────────────────────────────────
+
+    /**
+     * Global read-only access for Legal Consultants / Auditors (rank >= 5).
+     *
+     * They can VIEW any evidence across ALL cases — no case-assignment needed.
+     * They are STRICTLY BLOCKED from create, update, delete, and custody transfers.
+     *
+     * System logic: if (UserRank >= 5) -> Allow Global Read-Only; Deny Write.
+     */
+    public function isAuditor(): bool
+    {
+        return $this->hasMinimumRank(5);
+    }
+
+    /**
+     * Can this user view evidence globally (across all cases)?
+     *
+     * Rank 5+ (Auditor) → yes, all evidence system-wide.
+     * Rank 3–4 (Investigator) → only on assigned cases.
+     * Rank 1–2 → no.
+     */
+    public function canViewEvidenceGlobally(): bool
+    {
+        return $this->hasMinimumRank(5);
+    }
+
+    /**
+     * Is this user strictly read-only on evidence?
+     *
+     * Rank 5–7: auditor/consultant — global read, NO writes.
+     * Rank 8+:  admin — full write access, not read-only.
+     * Rank 3–4: investigator — scoped write on assigned cases.
+     *
+     * Returns true only for the "high-rank, low-impact" band (5–7).
+     */
+    public function isReadOnlyAuditor(): bool
+    {
+        return $this->rank >= 5 && $this->rank < 8;
+    }
+
+    /**
+     * Can this user trigger system-wide audit reports and
+     * Keccak-256 hash verification across all evidence?
+     *
+     * Requires rank >= 5 (Auditor clearance).
+     */
+    public function canRunSystemAudit(): bool
+    {
+        return $this->hasMinimumRank(5);
+    }
+
     // ─── Account Lockout ─────────────────────────────────────────────────────
 
     public function isLocked(): bool

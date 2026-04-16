@@ -13,6 +13,7 @@
                     <a href="{{ route('dashboard') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('dashboard') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Dashboard</a>
                     @if(Auth::user()->rank >= 3)
                     <a href="{{ route('evidence.create') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('evidence.*') ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Evidence</a>
+                    <a href="{{ route('custody.index') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('custody.*') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Custody</a>
                     @endif
                     <a href="{{ route('profile.edit') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('profile.*') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Profile</a>
                     @role('admin|super-admin')
@@ -75,3 +76,4 @@
         </div>
     </div>
 </nav>
+

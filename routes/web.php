@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\ChainOfCustodyController;
 use App\Http\Controllers\EvidenceController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -80,6 +81,25 @@ Route::middleware(['auth', 'verified', 'account.locked'])->group(function () {
         Route::get('/{evidence}',    [EvidenceController::class, 'show'])->name('show');
         Route::get('/{evidence}/download', [EvidenceController::class, 'download'])->name('download');
         Route::get('/{evidence}/preview',  [EvidenceController::class, 'preview'])->name('preview');
+    });
+
+    // ── Chain of Custody Module ───────────────────────────────────────────────
+    // Evidence index (rank 3+): investigators and above
+    // Chain viewer (rank 3+): investigators see their evidence; rank 5+ sees all
+    // Transfer / checkout / checkin (rank 3+): current custodian or admin
+    Route::prefix('custody')->name('custody.')->middleware(['rank:3'])->group(function () {
+        // Evidence listing with custody status
+        Route::get('/',                              [ChainOfCustodyController::class, 'index'])->name('index');
+
+        // Full chain of custody timeline for a specific evidence item
+        Route::get('/{evidence}',                    [ChainOfCustodyController::class, 'show'])->name('show');
+
+        // Custody transfer (rank 3+, must be current custodian or rank 8+)
+        Route::post('/{evidence}/transfer',          [ChainOfCustodyController::class, 'transfer'])->name('transfer');
+
+        // Check out / check in
+        Route::post('/{evidence}/checkout',          [ChainOfCustodyController::class, 'checkout'])->name('checkout');
+        Route::post('/{evidence}/checkin',           [ChainOfCustodyController::class, 'checkin'])->name('checkin');
     });
 });
 
