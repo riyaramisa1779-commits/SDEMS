@@ -16,12 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Named (alias) middleware
         $middleware->alias([
-            'rank'           => EnsureUserRank::class,
-            'account.locked' => CheckAccountLocked::class,
-            'track.device'   => TrackLoginDevice::class,
+            'rank'               => EnsureUserRank::class,
+            'account.locked'     => CheckAccountLocked::class,
+            'track.device'       => TrackLoginDevice::class,
+            'case.investigator'  => \App\Http\Middleware\EnsureCaseInvestigator::class,
             // Spatie role/permission middleware
-            'role'           => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission'     => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
 

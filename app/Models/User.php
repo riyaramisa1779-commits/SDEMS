@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
@@ -116,6 +117,79 @@ class User extends Authenticatable implements MustVerifyEmail
     public function hasMinimumRank(int $minRank): bool
     {
         return $this->rank >= $minRank;
+    }
+
+    /**
+     * Rank 3 — Senior Investigator operational check.
+     *
+     * Returns true when BOTH conditions are met:
+     *   1. User rank >= 3
+     *   2. User is the primary OR secondary investigator on the given case.
+     *
+     * This is the core gate for all evidence CRUD, custody transfers,
+     * and hash-integrity checks scoped to a specific case.
+     *
+     * Usage:
+     *   $user->isSeniorInvestigatorOnCase($case)
+     *   // or pass just the case ID:
+     *   $user->isSeniorInvestigatorOnCase($caseId)
+     */
+    public function isSeniorInvestigatorOnCase(mixed $case): bool
+    {
+        if (! $this->hasMinimumRank(3)) {
+            return false;
+        }
+
+        $caseId = $case instanceof \Illuminate\Database\Eloquent\Model
+            ? $case->getKey()
+            : (int) $case;
+
+        // Lazy-load the cases relationship only when the model exists.
+        // The actual relationship is defined in the Case model (Module 2).
+        // We query directly to avoid a hard dependency on the Case model here.
+        return \DB::table('cases')
+            ->where('id', $caseId)
+            ->where(function ($q) {
+                $q->where('primary_investigator_id', $this->id)
+                  ->orWhere('secondary_investigator_id', $this->id);
+            })
+            ->exists();
+    }
+
+    /**
+     * Convenience: can this user perform full evidence operations on a case?
+     *
+     * Rule: rank >= 3 AND assigned to case  (Senior Investigator scope)
+     * Higher ranks (>= 8 admin) bypass the case-assignment check entirely.
+     */
+    public function canManageEvidenceOnCase(mixed $case): bool
+    {
+        // Admins (rank >= 8) have unrestricted evidence access
+        if ($this->hasMinimumRank(8)) {
+            return true;
+        }
+
+        return $this->isSeniorInvestigatorOnCase($case);
+    }
+
+    /**
+     * Can this user initiate a Chain of Custody transfer?
+     *
+     * Requires rank >= 3 AND assignment to the case the evidence belongs to.
+     */
+    public function canTransferCustody(mixed $case): bool
+    {
+        return $this->canManageEvidenceOnCase($case);
+    }
+
+    /**
+     * Can this user run a hash-integrity verification on evidence?
+     *
+     * Same scope as evidence management — rank >= 3 + case assignment.
+     */
+    public function canVerifyEvidenceIntegrity(mixed $case): bool
+    {
+        return $this->canManageEvidenceOnCase($case);
     }
 
     // ─── Account Lockout ─────────────────────────────────────────────────────

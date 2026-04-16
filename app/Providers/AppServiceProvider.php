@@ -27,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
         // Register User Policy
         Gate::policy(User::class, UserPolicy::class);
 
+        // Register Evidence Policy (Rank 3 Senior Investigator scope)
+        // The Evidence model will be created in Module 2 — policy is ready now.
+        Gate::policy(\App\Models\Evidence::class, \App\Policies\EvidencePolicy::class);
+
         // Use Tailwind pagination
         Paginator::useTailwind();
 
