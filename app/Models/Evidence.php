@@ -257,6 +257,34 @@ class Evidence extends Model
     }
 
     /**
+     * Return the human-readable integrity status string.
+     *
+     * 'Pending'  — no hash record exists yet.
+     * 'Verified' — file exists and hash matches (requires file read).
+     * 'Tampered' — file exists but hash does not match.
+     * 'Missing'  — file not found on storage disk.
+     *
+     * NOTE: This performs a file read. For dashboard listings, prefer
+     * EvidenceIntegrityService::getDashboardStats() for lightweight counts.
+     */
+    public function getIntegrityStatus(): string
+    {
+        $latest = $this->latestHash;
+
+        if (! $latest) {
+            return 'Pending';
+        }
+
+        $disk = Storage::disk('evidence');
+
+        if (! $disk->exists($this->file_path)) {
+            return 'Missing';
+        }
+
+        return $this->verifyIntegrity() ? 'Verified' : 'Tampered';
+    }
+
+    /**
      * Verify integrity using Keccak-256 (Auditor-level verification).
      *
      * Computes a fresh Keccak-256 hash and compares it against the
@@ -297,6 +325,88 @@ class Evidence extends Model
     public function scopeByCategory($query, string $category)
     {
         return $query->where('category', $category);
+    }
+
+    /**
+     * Full-text search scope for case_number, title, and description.
+     */
+    public function scopeSearch($query, string $term)
+    {
+        return $query->where(function ($q) use ($term) {
+            $q->where('case_number', 'like', "%{$term}%")
+              ->orWhere('title', 'like', "%{$term}%")
+              ->orWhere('description', 'like', "%{$term}%");
+        });
+    }
+
+    /**
+     * Filter by tags (JSON contains).
+     */
+    public function scopeWithTags($query, array $tags)
+    {
+        return $query->where(function ($q) use ($tags) {
+            foreach ($tags as $tag) {
+                $q->orWhereJsonContains('tags', $tag);
+            }
+        });
+    }
+
+    /**
+     * Filter by date range.
+     */
+    public function scopeDateRange($query, ?string $from, ?string $to)
+    {
+        if ($from) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+        return $query;
+    }
+
+    /**
+     * Scope for rank-based access control.
+     * Returns only evidence the user is authorized to see.
+     */
+    public function scopeAccessibleBy($query, User $user)
+    {
+        // Rank 8+ (Admin): Full access
+        if ($user->hasMinimumRank(8)) {
+            return $query;
+        }
+
+        // Rank 5-7 (Auditor): Read-only access to all evidence
+        if ($user->canViewEvidenceGlobally()) {
+            return $query;
+        }
+
+        // Rank 3-4 (Senior Investigator): Evidence within assigned cases
+        if ($user->hasMinimumRank(3)) {
+            try {
+                $caseIds = \DB::table('cases')
+                    ->where(function ($q) use ($user) {
+                        $q->where('primary_investigator_id', $user->id)
+                          ->orWhere('secondary_investigator_id', $user->id);
+                    })
+                    ->pluck('id');
+
+                $caseNumbers = \DB::table('cases')
+                    ->whereIn('id', $caseIds)
+                    ->pluck('case_number');
+
+                return $query->whereIn('case_number', $caseNumbers);
+            } catch (\Exception $e) {
+                // If cases table doesn't exist, show all evidence for Rank 3-4
+                return $query;
+            }
+        }
+
+        // Rank 1-2 (Field Officer): Only evidence they uploaded or are assigned to
+        return $query->where(function ($q) use ($user) {
+            $q->where('uploaded_by', $user->id)
+              ->orWhere('assigned_to', $user->id);
+        });
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@
                 </svg>
                 <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-200">Chain of Custody — Evidence Registry</h2>
             </div>
-            @if(auth()->user()->rank >= 3)
+            @if(auth()->user()->rank >= 1)
             <a href="{{ route('evidence.create') }}"
                class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,17 +177,17 @@
                             {{-- Actions --}}
                             <td class="text-right">
                                 <div class="flex items-center justify-end gap-1.5">
-                                    {{-- View Chain --}}
+                                    @if($canAct)
+                                    {{-- View Chain (always visible) --}}
                                     <a href="{{ route('custody.show', $item) }}"
                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                         </svg>
-                                        View Chain
+                                        Details
                                     </a>
 
-                                    @if($canAct)
                                     {{-- Transfer --}}
                                     <button @click="openTransfer('{{ $item->id }}', '{{ addslashes($item->title) }}', '{{ $item->case_number }}')"
                                             class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
@@ -199,12 +199,31 @@
 
                                     {{-- Checkout --}}
                                     <button @click="openCheckout('{{ $item->id }}', '{{ addslashes($item->title) }}')"
-                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors">
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7"/>
                                         </svg>
                                         Checkout
                                     </button>
+
+                                    {{-- Check In --}}
+                                    <button @click="openCheckin('{{ $item->id }}', '{{ addslashes($item->title) }}')"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
+                                        </svg>
+                                        Check In
+                                    </button>
+                                    @else
+                                    {{-- View Chain (read-only users) --}}
+                                    <a href="{{ route('custody.show', $item) }}"
+                                       class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                        View Chain
+                                    </a>
                                     @endif
                                 </div>
                             </td>
@@ -374,13 +393,26 @@
                         Checking out: <span class="font-semibold text-slate-800 dark:text-slate-200" x-text="checkoutModal.title"></span>
                     </p>
                     <div>
-                        <label class="form-label">Location / Purpose <span class="text-red-500">*</span></label>
+                        <label class="form-label">Purpose <span class="text-red-500">*</span></label>
+                        <select name="purpose" required class="form-input">
+                            <option value="">Select purpose...</option>
+                            <option value="court">Court Presentation</option>
+                            <option value="lab">Lab Analysis</option>
+                            <option value="review">Review/Investigation</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <strong>Court:</strong> Status → "Admitted" | <strong>Other:</strong> Status → "In Review"
+                        </p>
+                    </div>
+                    <div>
+                        <label class="form-label">Location <span class="text-red-500">*</span></label>
                         <input type="text" name="location" required placeholder="e.g. Court Room 3, Forensic Lab"
                                class="form-input"/>
                     </div>
                     <div>
                         <label class="form-label">Notes</label>
-                        <textarea name="notes" rows="2" placeholder="Purpose of checkout, reference number..."
+                        <textarea name="notes" rows="2" placeholder="Additional details about this checkout..."
                                   class="form-input resize-none"></textarea>
                     </div>
                     <div class="flex items-center justify-end gap-3 pt-1">
@@ -396,23 +428,93 @@
             </div>
         </div>
 
+        {{-- ── Check-In Modal ──────────────────────────────────────────────────── --}}
+        <div x-show="checkinModal.open"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+             x-cloak
+             @keydown.escape.window="checkinModal.open = false">
+
+            <div x-show="checkinModal.open"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 @click.outside="checkinModal.open = false"
+                 class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md">
+
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-emerald-50 dark:bg-emerald-900/20">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Check In Evidence</h3>
+                    </div>
+                    <button @click="checkinModal.open = false" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <form :action="'/custody/' + checkinModal.evidenceId + '/checkin'" method="POST" class="px-6 py-5 space-y-4">
+                    @csrf
+                    <p class="text-sm text-slate-600 dark:text-slate-400">
+                        Checking in: <span class="font-semibold text-slate-800 dark:text-slate-200" x-text="checkinModal.title"></span>
+                    </p>
+                    <div>
+                        <label class="form-label">Return Location <span class="text-red-500">*</span></label>
+                        <input type="text" name="location" required placeholder="e.g. Evidence Storage Room A"
+                               class="form-input"/>
+                    </div>
+                    <div>
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" rows="2" placeholder="Condition on return, observations..."
+                                  class="form-input resize-none"></textarea>
+                    </div>
+                    <div class="flex items-center justify-end gap-3 pt-1">
+                        <button type="button" @click="checkinModal.open = false" class="btn-secondary btn-sm">Cancel</button>
+                        <button type="submit" class="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
+                            </svg>
+                            Check In
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
     </div>
 
     @push('scripts')
     <script>
     function custodyIndex() {
         return {
-            transferModal: { open: false, evidenceId: '', title: '', caseNumber: '', toUserId: '' },
+            transferModal: { open: false, evidenceId: '', title: '', caseNumber: '' },
             checkoutModal: { open: false, evidenceId: '', title: '' },
-
+            checkinModal:  { open: false, evidenceId: '', title: '' },
+            
             openTransfer(id, title, caseNumber) {
-                this.transferModal = { open: true, evidenceId: id, title: title, caseNumber: caseNumber, toUserId: '' };
+                this.transferModal = { open: true, evidenceId: id, title: title, caseNumber: caseNumber };
             },
             openCheckout(id, title) {
                 this.checkoutModal = { open: true, evidenceId: id, title: title };
+            },
+            openCheckin(id, title) {
+                console.log('openCheckin called with:', id, title);
+                this.checkinModal = { open: true, evidenceId: id, title: title };
+                console.log('checkinModal state:', this.checkinModal);
             },
         };
     }
     </script>
     @endpush
 </x-app-layout>
+

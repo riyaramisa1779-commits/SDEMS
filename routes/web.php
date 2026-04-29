@@ -4,8 +4,10 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ChainOfCustodyController;
 use App\Http\Controllers\EvidenceController;
+use App\Http\Controllers\IntegrityController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,12 +25,21 @@ Route::middleware(['auth', 'verified', 'account.locked'])->group(function () {
         return view('dashboard');
     })->name('dashboard');
 
+    // Nusrath's dedicated profile page — accessible from /dashboard/nusrath
+    Route::get('/dashboard/nusrath', [ProfileController::class, 'nusrathProfile'])->name('dashboard.nusrath');
+
     // ── Profile ──────────────────────────────────────────────────────────────
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/',        [ProfileController::class, 'edit'])->name('edit');
         Route::patch('/',      [ProfileController::class, 'update'])->name('update');
         Route::delete('/',     [ProfileController::class, 'destroy'])->name('destroy');
         Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
+
+        // Riya's dedicated Senior Investigator profile page
+        Route::get('/riya_profile', [ProfileController::class, 'riyaProfile'])->name('riya');
+
+        // Nusrath's dedicated Senior Investigator profile page
+        Route::get('/nusrath_profile', [ProfileController::class, 'nusrathProfile'])->name('nusrath');
 
         // 2FA
         Route::post('/two-factor/enable',  [ProfileController::class, 'enableTwoFactor'])->name('two-factor.enable');
@@ -83,6 +94,13 @@ Route::middleware(['auth', 'verified', 'account.locked'])->group(function () {
         Route::get('/{evidence}/preview',  [EvidenceController::class, 'preview'])->name('preview');
     });
 
+    // ── Evidence Search Module (Module 7) ─────────────────────────────────────
+    // Advanced search with rank-based access control (rank 1+)
+    Route::prefix('search')->name('search.')->middleware(['rank:1'])->group(function () {
+        Route::get('/',              [\App\Http\Controllers\EvidenceSearchController::class, 'index'])->name('index');
+        Route::get('/suggestions',   [\App\Http\Controllers\EvidenceSearchController::class, 'suggestions'])->name('suggestions');
+    });
+
     // ── Chain of Custody Module ───────────────────────────────────────────────
     // Evidence index (rank 3+): investigators and above
     // Chain viewer (rank 3+): investigators see their evidence; rank 5+ sees all
@@ -100,6 +118,38 @@ Route::middleware(['auth', 'verified', 'account.locked'])->group(function () {
         // Check out / check in
         Route::post('/{evidence}/checkout',          [ChainOfCustodyController::class, 'checkout'])->name('checkout');
         Route::post('/{evidence}/checkin',           [ChainOfCustodyController::class, 'checkin'])->name('checkin');
+    });
+
+    // ── Integrity Verification Module (Module 5) ──────────────────────────────
+    // Rank 5+ required to view integrity reports and trigger verifications.
+    // Rank 8+ required for re-hash and bulk verify (heavy / destructive-ish ops).
+    Route::prefix('integrity')->name('integrity.')->middleware(['rank:5'])->group(function () {
+
+        // Dashboard: all evidence with integrity status
+        Route::get('/',                         [IntegrityController::class, 'index'])->name('index');
+
+        // Detailed report for a single evidence item
+        Route::get('/{evidence}',               [IntegrityController::class, 'show'])->name('show');
+
+        // AJAX: verify a single evidence file (rank 5+)
+        Route::post('/{evidence}/verify',       [IntegrityController::class, 'verify'])->name('verify');
+
+        // AJAX: re-generate hash (rank 8+ only)
+        Route::post('/{evidence}/rehash',       [IntegrityController::class, 'rehash'])
+            ->name('rehash')
+            ->middleware('rank:8');
+
+        // AJAX: bulk verify all evidence (rank 8+ only)
+        Route::post('/bulk-verify',             [IntegrityController::class, 'bulkVerify'])
+            ->name('bulk-verify')
+            ->middleware('rank:8');
+    });
+
+    // ── Audit Log Module (Module 6) ───────────────────────────────────────────
+    // Rank 5+ can view logs; rank 8+ gets full access (subject filter, export).
+    Route::prefix('audit-logs')->name('audit-logs.')->middleware(['rank:5'])->group(function () {
+        Route::get('/',        [AuditLogController::class, 'index'])->name('index');
+        Route::get('/{id}',    [AuditLogController::class, 'show'])->name('show');
     });
 });
 

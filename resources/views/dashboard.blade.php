@@ -47,8 +47,8 @@
         {{-- ── Quick actions grid ───────────────────────────────────────── --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
 
-            {{-- Upload Evidence — Rank 3+ only --}}
-            @if($user->rank >= 3)
+            {{-- Upload Evidence — Rank 1+ --}}
+            @if($user->rank >= 1)
             <a href="{{ route('evidence.create') }}"
                class="group flex items-start gap-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-5 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all duration-200">
                 <div class="shrink-0 w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/60 transition-colors">
@@ -93,6 +93,23 @@
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Manage account settings & 2FA</p>
                 </div>
             </a>
+
+            {{-- Nusrath — Senior Investigator dedicated profile (rank 3+ only) --}}
+            @if($user->rank >= 3)
+            <a href="{{ route('dashboard.nusrath') }}"
+               class="group flex items-start gap-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-5 hover:border-violet-400 dark:hover:border-violet-500 hover:shadow-md transition-all duration-200">
+                <div class="shrink-0 w-11 h-11 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center group-hover:bg-violet-200 dark:group-hover:bg-violet-900/60 transition-colors">
+                    <svg class="w-6 h-6 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Nusrath</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Senior Investigator profile</p>
+                </div>
+            </a>
+            @endif
 
             {{-- Admin Panel — rank 8+ only --}}
             @if($user->rank >= 8)

@@ -17,7 +17,12 @@
                 <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
-                {{ session('success') }}
+                <div>
+                    <p class="font-medium">{{ session('success') }}</p>
+                    @if (session('upload_summary'))
+                        <p class="mt-1 text-xs">{{ session('upload_summary') }}</p>
+                    @endif
+                </div>
             </div>
         @endif
 
@@ -36,17 +41,18 @@
         <form method="POST"
               action="{{ route('evidence.store') }}"
               enctype="multipart/form-data"
-              id="evidence-form">
+              id="evidence-form"
+              x-data="uploadForm()"
+              @submit="isUploading = true; uploadProgress = 0;">
             @csrf
 
             <div class="space-y-6">
 
-                {{-- ── File Upload ──────────────────────────────────────────── --}}
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6"
-                     x-data="dropZone()">
+                {{-- ── File Upload (Multiple) ──────────────────────────────── --}}
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
 
                     <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-4">
-                        File Upload
+                        File Upload (Multiple Files Supported)
                     </h3>
 
                     {{-- Drop zone --}}
@@ -67,18 +73,19 @@
                                       d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                             </svg>
                             <p class="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                Drag a file here or <span class="text-blue-600 dark:text-blue-400">click to browse</span>
+                                Drag multiple files here or <span class="text-blue-600 dark:text-blue-400">click to browse</span>
                             </p>
                             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                Images, PDFs, documents, videos, audio, archives — max 2 GB
+                                Select up to 10 files — max 2 GB per file, 10 GB total
                             </p>
                         </div>
 
                         <input type="file"
-                               name="file"
+                               name="files[]"
                                id="file-input"
                                x-ref="fileInput"
                                class="hidden"
+                               multiple
                                @change="handleFileSelect($event)"
                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,
                                        .jpg,.jpeg,.png,.gif,.webp,.tiff,.bmp,
@@ -87,45 +94,70 @@
                                        .zip,.tar,.gz,.7z">
                     </div>
 
-                    {{-- Selected file display --}}
-                    <div x-show="selectedFile" x-cloak class="mt-4">
-                        <div class="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 px-4 py-3">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <div class="shrink-0 w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate" x-text="selectedFile?.name"></p>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400" x-text="formatBytes(selectedFile?.size)"></p>
-                                </div>
-                            </div>
+                    {{-- Selected files list --}}
+                    <div x-show="selectedFiles.length > 0" x-cloak class="mt-4 space-y-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                <span x-text="selectedFiles.length"></span> file<span x-show="selectedFiles.length !== 1">s</span> selected
+                                <span class="text-slate-500 dark:text-slate-400">(<span x-text="formatBytes(totalSize)"></span> total)</span>
+                            </p>
                             <button type="button"
-                                    @click.stop="removeFile()"
-                                    class="ml-3 shrink-0 text-slate-400 hover:text-red-500 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
+                                    @click="clearAllFiles()"
+                                    class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium transition-colors">
+                                Clear All
                             </button>
+                        </div>
+
+                        <div class="max-h-64 overflow-y-auto space-y-2 pr-1">
+                            <template x-for="(file, index) in selectedFiles" :key="index">
+                                <div class="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 px-4 py-3 transition-all hover:bg-slate-100 dark:hover:bg-slate-700">
+                                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                                        <div class="shrink-0 w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate" x-text="file.name"></p>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400" x-text="formatBytes(file.size)"></p>
+                                        </div>
+                                    </div>
+                                    <button type="button"
+                                            @click.stop="removeFile(index)"
+                                            class="ml-3 shrink-0 text-slate-400 hover:text-red-500 transition-colors">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </template>
                         </div>
                     </div>
 
-                    {{-- Client-side file error --}}
-                    <p x-show="fileError" x-cloak x-text="fileError"
-                       class="mt-2 text-xs text-red-600 dark:text-red-400"></p>
+                    {{-- Client-side file errors --}}
+                    <div x-show="fileErrors.length > 0" x-cloak class="mt-3 space-y-1">
+                        <template x-for="(error, index) in fileErrors" :key="index">
+                            <p class="text-xs text-red-600 dark:text-red-400" x-text="error"></p>
+                        </template>
+                    </div>
 
-                    @error('file')
+                    @error('files')
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                    @error('files.*')
                         <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                     @enderror
                 </div>
 
-                {{-- ── Metadata ─────────────────────────────────────────────── --}}
+                {{-- ── Metadata (Applied to All Files) ──────────────────────── --}}
                 <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-                    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-4">
+                    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1">
                         Evidence Metadata
                     </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                        This metadata will be applied to all uploaded files
+                    </p>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
@@ -176,7 +208,7 @@
                                    id="title"
                                    name="title"
                                    value="{{ old('title') }}"
-                                   placeholder="Brief descriptive title for this evidence"
+                                   placeholder="Brief descriptive title for this evidence batch"
                                    class="w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors
                                           {{ $errors->has('title') ? 'border-red-400' : 'border-slate-300 dark:border-slate-600' }}">
                             @error('title')
@@ -226,6 +258,23 @@
                     </div>
                 </div>
 
+                {{-- ── Upload Progress ──────────────────────────────────────── --}}
+                <div x-show="isUploading" x-cloak class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            Uploading Files...
+                        </h3>
+                        <span class="text-sm text-slate-600 dark:text-slate-400" x-text="uploadProgress + '%'"></span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                             :style="'width: ' + uploadProgress + '%'"></div>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        Please wait while your files are being uploaded and processed...
+                    </p>
+                </div>
+
                 {{-- ── Security Notice ──────────────────────────────────────── --}}
                 <div class="flex items-start gap-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 px-4 py-3">
                     <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,9 +283,9 @@
                     </svg>
                     <p class="text-xs text-amber-800 dark:text-amber-300">
                         <span class="font-semibold">Chain of Custody Notice:</span>
-                        Uploading this file will create an immutable audit record under your account.
-                        A SHA-256 hash will be computed and stored for integrity verification.
-                        This action is logged and cannot be undone.
+                        Uploading these files will create immutable audit records under your account.
+                        SHA-256 hashes will be computed and stored for integrity verification.
+                        All actions are logged and cannot be undone.
                     </p>
                 </div>
 
@@ -248,12 +297,12 @@
                     </a>
 
                     <button type="submit"
-                            form="evidence-form"
-                            class="inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                            :disabled="isUploading || selectedFiles.length === 0"
+                            class="inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
-                        Save Evidence
+                        <span x-text="selectedFiles.length > 0 ? 'Upload ' + selectedFiles.length + ' File' + (selectedFiles.length !== 1 ? 's' : '') : 'Save Evidence'"></span>
                     </button>
                 </div>
 
@@ -268,43 +317,91 @@
             : [];
     @endphp
     <script>
-    function dropZone() {
+    function uploadForm() {
         return {
             isDragging: false,
-            selectedFile: null,
-            fileError: '',
-            maxSize: 2 * 1024 * 1024 * 1024,
+            selectedFiles: [],
+            fileErrors: [],
+            isUploading: false,
+            uploadProgress: 0,
+            maxFileSize: 2 * 1024 * 1024 * 1024, // 2 GB per file
+            maxTotalSize: 10 * 1024 * 1024 * 1024, // 10 GB total
+            maxFiles: 10,
+
+            get totalSize() {
+                return this.selectedFiles.reduce((sum, file) => sum + file.size, 0);
+            },
 
             handleDrop(event) {
                 this.isDragging = false;
-                const file = event.dataTransfer.files[0];
-                if (file) {
-                    this.validateAndSet(file);
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    this.$refs.fileInput.files = dt.files;
-                }
+                const files = Array.from(event.dataTransfer.files);
+                this.addFiles(files);
             },
 
             handleFileSelect(event) {
-                const file = event.target.files[0];
-                if (file) this.validateAndSet(file);
+                const files = Array.from(event.target.files);
+                this.addFiles(files);
             },
 
-            validateAndSet(file) {
-                this.fileError = '';
-                if (file.size > this.maxSize) {
-                    this.fileError = 'File too large. Maximum size is 2 GB.';
-                    this.selectedFile = null;
+            addFiles(files) {
+                this.fileErrors = [];
+                
+                // Check max files limit
+                if (this.selectedFiles.length + files.length > this.maxFiles) {
+                    this.fileErrors.push(`Maximum ${this.maxFiles} files allowed. You tried to add ${files.length} more files.`);
                     return;
                 }
-                this.selectedFile = file;
+
+                // Validate and add each file
+                files.forEach(file => {
+                    // Check individual file size
+                    if (file.size > this.maxFileSize) {
+                        this.fileErrors.push(`${file.name}: File too large (max 2 GB per file)`);
+                        return;
+                    }
+
+                    // Check if file already selected
+                    const isDuplicate = this.selectedFiles.some(f => 
+                        f.name === file.name && f.size === file.size
+                    );
+                    
+                    if (isDuplicate) {
+                        this.fileErrors.push(`${file.name}: Already selected`);
+                        return;
+                    }
+
+                    this.selectedFiles.push(file);
+                });
+
+                // Check total size
+                if (this.totalSize > this.maxTotalSize) {
+                    this.fileErrors.push(`Total size exceeds 10 GB limit (current: ${this.formatBytes(this.totalSize)})`);
+                    // Remove last added files to get back under limit
+                    while (this.totalSize > this.maxTotalSize && this.selectedFiles.length > 0) {
+                        this.selectedFiles.pop();
+                    }
+                }
+
+                // Update file input
+                this.updateFileInput();
             },
 
-            removeFile() {
-                this.selectedFile = null;
-                this.fileError = '';
+            removeFile(index) {
+                this.selectedFiles.splice(index, 1);
+                this.fileErrors = [];
+                this.updateFileInput();
+            },
+
+            clearAllFiles() {
+                this.selectedFiles = [];
+                this.fileErrors = [];
                 this.$refs.fileInput.value = '';
+            },
+
+            updateFileInput() {
+                const dt = new DataTransfer();
+                this.selectedFiles.forEach(file => dt.items.add(file));
+                this.$refs.fileInput.files = dt.files;
             },
 
             formatBytes(bytes) {

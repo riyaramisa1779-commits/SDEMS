@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * EvidencePolicy
  *
- * Enforces the three-tier rank access model for evidence:
+ * Enforces the rank-based access model for evidence:
  *
  * ┌─────────────────────────────────────────────────────────────────────┐
- * │ Rank 1–2  │ No evidence access at all                               │
+ * │ Rank 1–2  │ Can UPLOAD evidence only — no view/edit/transfer        │
  * │ Rank 3–4  │ Full CRUD — scoped to assigned cases only               │
  * │ Rank 5–7  │ Global READ-ONLY — all cases, NO writes (Auditor)       │
  * │ Rank 8+   │ Full CRUD — all cases, no restrictions (Admin)          │
@@ -66,6 +66,7 @@ class EvidencePolicy
      * Upload / create new evidence.
      *
      * Auditors (rank 5–7) are STRICTLY BLOCKED — read-only clearance.
+     * Rank 1+: allowed to upload evidence.
      * Rank 3–4: allowed (case-scoped check happens in controller).
      * Rank 8+:  allowed.
      */
@@ -77,7 +78,8 @@ class EvidencePolicy
             return false;
         }
 
-        return $user->hasMinimumRank(3);
+        // Allow Rank 1+ to upload evidence
+        return $user->hasMinimumRank(1);
     }
 
     /**

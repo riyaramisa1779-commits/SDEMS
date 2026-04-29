@@ -11,9 +11,20 @@
                 </a>
                 <div class="hidden sm:flex items-center gap-1">
                     <a href="{{ route('dashboard') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('dashboard') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Dashboard</a>
-                    @if(Auth::user()->rank >= 3)
+                    @if(Auth::user()->rank >= 1)
+                    <a href="{{ route('search.index') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('search.*') ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Search</a>
+                    @endif
+                    @if(Auth::user()->rank >= 1)
                     <a href="{{ route('evidence.create') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('evidence.*') ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Evidence</a>
+                    @endif
+                    @if(Auth::user()->rank >= 3)
                     <a href="{{ route('custody.index') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('custody.*') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Custody</a>
+                    @endif
+                    @if(Auth::user()->rank >= 5)
+                    <a href="{{ route('integrity.index') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('integrity.*') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Integrity</a>
+                    @endif
+                    @if(Auth::user()->rank >= 5)
+                    <a href="{{ route('audit-logs.index') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('audit-logs.*') ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Audit Logs</a>
                     @endif
                     <a href="{{ route('profile.edit') }}" class="px-3 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('profile.*') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700' }}">Profile</a>
                     @role('admin|super-admin')
@@ -60,9 +71,18 @@
     <div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden border-t border-slate-200 dark:border-slate-700">
         <div class="pt-2 pb-3 space-y-1 px-4">
             <a href="{{ route('dashboard') }}" class="block px-3 py-2 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Dashboard</a>
-            <a href="{{ route('dashboard') }}" class="block px-3 py-2 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Dashboard</a>
-            @if(Auth::user()->rank >= 3)
+            @if(Auth::user()->rank >= 1)
+            <a href="{{ route('search.index') }}" class="block px-3 py-2 rounded-lg text-sm text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20">Search</a>
+            @endif
+            @if(Auth::user()->rank >= 1)
             <a href="{{ route('evidence.create') }}" class="block px-3 py-2 rounded-lg text-sm text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20">Evidence</a>
+            @endif
+            @if(Auth::user()->rank >= 3)
+            <a href="{{ route('custody.index') }}" class="block px-3 py-2 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Custody</a>
+            @endif
+            @if(Auth::user()->rank >= 5)
+            <a href="{{ route('integrity.index') }}" class="block px-3 py-2 rounded-lg text-sm text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">Integrity</a>
+            <a href="{{ route('audit-logs.index') }}" class="block px-3 py-2 rounded-lg text-sm text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20">Audit Logs</a>
             @endif
             <a href="{{ route('profile.edit') }}" class="block px-3 py-2 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Profile</a>
         </div>

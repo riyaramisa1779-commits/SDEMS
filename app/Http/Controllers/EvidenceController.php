@@ -80,14 +80,16 @@ class EvidenceController extends Controller
     // ── Store (Upload) ────────────────────────────────────────────────────────
 
     /**
-     * Handle the evidence upload.
+     * Handle the evidence upload (supports multiple files).
      *
      * Flow:
-     * 1. Validate metadata + file.
-     * 2. Generate a UUID-based filename and store on the private 'evidence' disk.
-     * 3. Create the Evidence record (model boot auto-creates ChainOfCustody).
-     * 4. Dispatch CalculateEvidenceHash job to the queue.
-     * 5. Log the upload via Spatie Activitylog.
+     * 1. Validate metadata + files array.
+     * 2. For each file:
+     *    a. Generate a UUID-based filename and store on the private 'evidence' disk.
+     *    b. Create the Evidence record (model boot auto-creates ChainOfCustody).
+     *    c. Dispatch CalculateEvidenceHash job to the queue.
+     *    d. Log the upload via Spatie Activitylog.
+     * 3. Return summary of successful/failed uploads.
      */
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
@@ -98,7 +100,8 @@ class EvidenceController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'category'    => ['required', 'string', 'in:' . implode(',', Evidence::CATEGORIES)],
             'tags'        => ['nullable', 'string', 'max:500'],
-            'file'        => [
+            'files'       => ['required', 'array', 'min:1', 'max:10'],
+            'files.*'     => [
                 'required',
                 'file',
                 'max:2097152', // 2 GB in kilobytes
@@ -109,30 +112,26 @@ class EvidenceController extends Controller
                     }
                 },
             ],
+        ], [
+            'files.required' => 'Please select at least one file to upload.',
+            'files.max' => 'You can upload a maximum of 10 files at once.',
+            'files.*.max' => 'Each file must not exceed 2 GB.',
         ]);
 
-        $file = $request->file('file');
-        $user = Auth::user();
-
-        // ── Secure filename ───────────────────────────────────────────────────
-        // Never use the original filename for storage — UUID prevents path
-        // traversal, enumeration, and filename-based information leakage.
-        $extension    = $file->getClientOriginalExtension();
-        $storedName   = Str::uuid() . ($extension ? ".{$extension}" : '');
-        $yearMonth    = now()->format('Y/m');
-        $storagePath  = "{$yearMonth}/{$storedName}";
-
-        // ── Store file ────────────────────────────────────────────────────────
-        try {
-            Storage::disk('evidence')->putFileAs($yearMonth, $file, $storedName);
-        } catch (\Throwable $e) {
-            Log::error("Evidence upload failed for user {$user->id}: {$e->getMessage()}");
+        // Additional validation: check total size (10 GB limit)
+        $totalSize = collect($request->file('files'))->sum(fn($file) => $file->getSize());
+        $maxTotalSize = 10 * 1024 * 1024 * 1024; // 10 GB in bytes
+        
+        if ($totalSize > $maxTotalSize) {
             return back()
                 ->withInput()
-                ->withErrors(['file' => 'File storage failed. Please try again.']);
+                ->withErrors(['files' => 'Total file size exceeds 10 GB limit.']);
         }
 
-        // ── Parse tags ────────────────────────────────────────────────────────
+        $user = Auth::user();
+        $files = $request->file('files');
+        
+        // ── Parse tags (shared across all files) ─────────────────────────────
         $tags = null;
         if (! empty($validated['tags'])) {
             $tags = array_values(array_filter(
@@ -140,51 +139,111 @@ class EvidenceController extends Controller
             ));
         }
 
-        // ── Create Evidence record ────────────────────────────────────────────
-        // The model's boot() will automatically:
-        //   1. Call generateHash() — we'll override this with the queued job.
-        //   2. Create the initial ChainOfCustody 'upload' record.
-        //
-        // We set status = 'pending' until the hash job completes.
-        $evidence = Evidence::create([
-            'case_number'   => strtoupper(trim($validated['case_number'])),
-            'title'         => $validated['title'],
-            'description'   => $validated['description'] ?? null,
-            'category'      => $validated['category'],
-            'tags'          => $tags,
-            'file_path'     => $storagePath,
-            'original_name' => $file->getClientOriginalName(),
-            'mime_type'     => $file->getMimeType(),
-            'file_size'     => $file->getSize(),
-            'uploaded_by'   => $user->id,
-            'status'        => 'pending',
-        ]);
+        // ── Process each file ─────────────────────────────────────────────────
+        $successCount = 0;
+        $failedFiles = [];
+        $uploadedEvidence = [];
 
-        // ── Dispatch hash job ─────────────────────────────────────────────────
-        // The model boot() already called generateHash() synchronously.
-        // For large files, dispatch the job to re-verify / update status.
-        CalculateEvidenceHash::dispatch($evidence->id);
+        foreach ($files as $index => $file) {
+            try {
+                // ── Secure filename ───────────────────────────────────────────
+                // Never use the original filename for storage — UUID prevents path
+                // traversal, enumeration, and filename-based information leakage.
+                $extension    = $file->getClientOriginalExtension();
+                $storedName   = Str::uuid() . ($extension ? ".{$extension}" : '');
+                $yearMonth    = now()->format('Y/m');
+                $storagePath  = "{$yearMonth}/{$storedName}";
 
-        // ── Activity log ──────────────────────────────────────────────────────
-        activity('evidence_upload')
-            ->causedBy($user)
-            ->performedOn($evidence)
-            ->withProperties([
-                'case_number'   => $evidence->case_number,
-                'title'         => $evidence->title,
-                'category'      => $evidence->category,
-                'file_size'     => $evidence->file_size,
-                'mime_type'     => $evidence->mime_type,
-                'original_name' => $evidence->original_name,
-                'user_rank'     => $user->rank,
-                'ip'            => $request->ip(),
-                'user_agent'    => $request->userAgent(),
-            ])
-            ->log('Evidence uploaded');
+                // ── Store file ────────────────────────────────────────────────
+                Storage::disk('evidence')->putFileAs($yearMonth, $file, $storedName);
 
+                // ── Create Evidence record ────────────────────────────────────
+                // The model's boot() will automatically:
+                //   1. Call generateHash() — we'll override this with the queued job.
+                //   2. Create the initial ChainOfCustody 'upload' record.
+                //
+                // We set status = 'pending' until the hash job completes.
+                // For multiple files, append file number to title if more than one file
+                $fileTitle = count($files) > 1 
+                    ? $validated['title'] . ' - ' . $file->getClientOriginalName()
+                    : $validated['title'];
+
+                $evidence = Evidence::create([
+                    'case_number'   => strtoupper(trim($validated['case_number'])),
+                    'title'         => $fileTitle,
+                    'description'   => $validated['description'] ?? null,
+                    'category'      => $validated['category'],
+                    'tags'          => $tags,
+                    'file_path'     => $storagePath,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type'     => $file->getMimeType(),
+                    'file_size'     => $file->getSize(),
+                    'uploaded_by'   => $user->id,
+                    'status'        => 'pending',
+                ]);
+
+                // ── Dispatch hash job ─────────────────────────────────────────
+                // The model boot() already called generateHash() synchronously.
+                // For large files, dispatch the job to re-verify / update status.
+                CalculateEvidenceHash::dispatch($evidence->id);
+
+                // ── Activity log ──────────────────────────────────────────────
+                activity('evidence_upload')
+                    ->causedBy($user)
+                    ->performedOn($evidence)
+                    ->withProperties([
+                        'case_number'   => $evidence->case_number,
+                        'title'         => $evidence->title,
+                        'category'      => $evidence->category,
+                        'file_size'     => $evidence->file_size,
+                        'mime_type'     => $evidence->mime_type,
+                        'original_name' => $evidence->original_name,
+                        'user_rank'     => $user->rank,
+                        'ip'            => $request->ip(),
+                        'user_agent'    => $request->userAgent(),
+                        'batch_upload'  => true,
+                        'batch_index'   => $index + 1,
+                        'batch_total'   => count($files),
+                    ])
+                    ->log('Evidence uploaded (batch)');
+
+                $successCount++;
+                $uploadedEvidence[] = $evidence;
+
+            } catch (\Throwable $e) {
+                Log::error("Evidence upload failed for file '{$file->getClientOriginalName()}' (user {$user->id}): {$e->getMessage()}");
+                $failedFiles[] = $file->getClientOriginalName();
+            }
+        }
+
+        // ── Build response message ────────────────────────────────────────────
+        if ($successCount === 0) {
+            return back()
+                ->withInput()
+                ->withErrors(['files' => 'All file uploads failed. Please try again.']);
+        }
+
+        $message = $successCount === count($files)
+            ? "Successfully uploaded {$successCount} file" . ($successCount !== 1 ? 's' : '') . "!"
+            : "Uploaded {$successCount} of " . count($files) . " files.";
+
+        $summary = $successCount === count($files)
+            ? "All files uploaded successfully. Hash calculations are in progress."
+            : "Some files failed: " . implode(', ', $failedFiles);
+
+        // If single file, redirect to its detail page
+        if (count($uploadedEvidence) === 1) {
+            return redirect()
+                ->route('evidence.show', $uploadedEvidence[0])
+                ->with('success', $message)
+                ->with('upload_summary', $summary);
+        }
+
+        // For multiple files, redirect to custody index (evidence listing)
         return redirect()
-            ->route('evidence.show', $evidence)
-            ->with('success', "Evidence '{$evidence->title}' uploaded successfully. Hash calculation is in progress.");
+            ->route('custody.index')
+            ->with('success', $message)
+            ->with('upload_summary', $summary);
     }
 
     // ── Show ──────────────────────────────────────────────────────────────────

@@ -489,13 +489,27 @@
             <form action="{{ route('custody.checkout', $evidence) }}" method="POST" class="p-6 space-y-4">
                 @csrf
                 <div>
+                    <label class="form-label">Purpose <span class="text-red-500">*</span></label>
+                    <select name="purpose" required class="form-input">
+                        <option value="">Select purpose...</option>
+                        <option value="court">Court Presentation</option>
+                        <option value="lab">Lab Analysis</option>
+                        <option value="review">Review/Investigation</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        <strong>Court:</strong> Status will change to "Admitted" | <strong>Other:</strong> Status will change to "In Review"
+                    </p>
+                    @error('purpose')<p class="form-error">{{ $message }}</p>@enderror
+                </div>
+                <div>
                     <label class="form-label">Checkout Location <span class="text-red-500">*</span></label>
                     <input type="text" name="location" required placeholder="e.g. Courtroom 3, Forensics Lab" class="form-input" maxlength="255">
                     @error('location')<p class="form-error">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label class="form-label">Notes</label>
-                    <textarea name="notes" rows="2" placeholder="Purpose of checkout, case reference..." class="form-input resize-none" maxlength="2000"></textarea>
+                    <textarea name="notes" rows="2" placeholder="Additional details about this checkout..." class="form-input resize-none" maxlength="2000"></textarea>
                 </div>
                 <div class="flex items-center justify-end gap-3 pt-2">
                     <button type="button" @click="checkoutModal.open = false" class="btn-secondary">Cancel</button>

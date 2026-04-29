@@ -109,6 +109,38 @@ class DatabaseSeeder extends Seeder
         );
         $investigator->assignRole('investigator');
 
+        // ── Riya — Senior Investigator (rank 3) ────────────────────────────────
+        // Dedicated user for the /profile/riya_profile special page.
+        $riya = User::firstOrCreate(
+            ['email' => 'riya@sdems.local'],
+            [
+                'name'               => 'Riya',
+                'password'           => Hash::make('Riya@SDEMS#2024!'),
+                'rank'               => 3,
+                'is_active'          => true,
+                'email_verified_at'  => now(),
+                'password_changed_at' => now(),
+                'password_expires_at' => now()->addDays(90),
+            ]
+        );
+        $riya->assignRole('investigator');
+
+        // ── Nusrath — Senior Investigator (rank 3) ─────────────────────────────
+        // Dedicated user for the /dashboard/nusrath special page.
+        $nusrath = User::firstOrCreate(
+            ['email' => 'nusrath@sdems.local'],
+            [
+                'name'               => 'Nusrath',
+                'password'           => Hash::make('Nusrath@SDEMS#2024!'),
+                'rank'               => 3,
+                'is_active'          => true,
+                'email_verified_at'  => now(),
+                'password_changed_at' => now(),
+                'password_expires_at' => now()->addDays(90),
+            ]
+        );
+        $nusrath->assignRole('investigator');
+
         // ── Legal Consultant / Auditor (rank 5) ────────────────────────────────
         $auditorRole = Role::firstOrCreate(['name' => 'auditor', 'guard_name' => 'web']);
         $auditorRole->syncPermissions(['profile.edit', 'activity-log.view']);
@@ -131,11 +163,13 @@ class DatabaseSeeder extends Seeder
         $this->command->table(
             ['Email', 'Role', 'Rank', 'Password'],
             [
-                ['superadmin@sdems.local',  'super-admin', 10, 'Admin@SDEMS#2024!'],
-                ['admin@sdems.local',       'admin',        8, 'Admin@SDEMS#2024!'],
-                ['auditor@sdems.local',     'auditor',      5, 'Audit@SDEMS#2024!'],
-                ['investigator@sdems.local','investigator', 3, 'Invest@SDEMS#2024!'],
-                ['user@sdems.local',        'user',         1, 'User@SDEMS#2024!'],
+                ['superadmin@sdems.local',  'super-admin',  10, 'Admin@SDEMS#2024!'],
+                ['admin@sdems.local',       'admin',         8, 'Admin@SDEMS#2024!'],
+                ['auditor@sdems.local',     'auditor',       5, 'Audit@SDEMS#2024!'],
+                ['riya@sdems.local',        'investigator',  3, 'Riya@SDEMS#2024!'],
+                ['nusrath@sdems.local',     'investigator',  3, 'Nusrath@SDEMS#2024!'],
+                ['investigator@sdems.local','investigator',  3, 'Invest@SDEMS#2024!'],
+                ['user@sdems.local',        'user',          1, 'User@SDEMS#2024!'],
             ]
         );
 

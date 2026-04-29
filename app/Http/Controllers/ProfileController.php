@@ -8,6 +8,7 @@ use App\Services\TwoFactorService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
@@ -41,6 +42,79 @@ class ProfileController extends Controller
         $sessions = $user->loginDevices()->limit(5)->get();
 
         return view('profile.edit', compact('user', 'qrCodeSvg', 'recoveryCodes', 'sessions'));
+    }
+
+    /**
+     * Display Riya's dedicated Senior Investigator profile page.
+     *
+     * Authorization: Gate 'access-riya-profile'
+     *   → Passes for users named "Riya" OR rank >= 3.
+     *   → All others receive a 403 Forbidden response.
+     *
+     * Functionality is identical to the standard profile page.
+     * All actions (update, password, 2FA, sessions) are logged via Spatie.
+     */
+    public function riyaProfile(Request $request): View
+    {
+        // Gate check — aborts with 403 if the user is not authorised
+        Gate::authorize('access-riya-profile');
+
+        $user = $request->user();
+
+        $qrCodeSvg     = null;
+        $recoveryCodes = collect();
+
+        if ($user->two_factor_secret && ! $user->hasTwoFactorEnabled()) {
+            $qrCodeSvg = $this->twoFactorService->getQrCodeSvg($user);
+        }
+
+        if ($user->hasTwoFactorEnabled()) {
+            $recoveryCodes = $this->twoFactorService->getRecoveryCodes($user);
+        }
+
+        $sessions = $user->loginDevices()->limit(5)->get();
+
+        // Log the page visit for audit trail
+        activity('profile')
+            ->causedBy($user)
+            ->withProperties(['page' => 'riya_profile', 'ip' => $request->ip()])
+            ->log('Accessed Riya Senior Investigator profile page');
+
+        return view('profile.riya_profile', compact('user', 'qrCodeSvg', 'recoveryCodes', 'sessions'));
+    }
+
+    /**
+     * Display Nusrath's dedicated Senior Investigator profile page.
+     *
+     * Authorization: Gate 'access-nusrath-profile'
+     *   → Passes for users named "Nusrath" OR rank >= 3.
+     *   → All others receive a 403 Forbidden response.
+     */
+    public function nusrathProfile(Request $request): View
+    {
+        Gate::authorize('access-nusrath-profile');
+
+        $user = $request->user();
+
+        $qrCodeSvg     = null;
+        $recoveryCodes = collect();
+
+        if ($user->two_factor_secret && ! $user->hasTwoFactorEnabled()) {
+            $qrCodeSvg = $this->twoFactorService->getQrCodeSvg($user);
+        }
+
+        if ($user->hasTwoFactorEnabled()) {
+            $recoveryCodes = $this->twoFactorService->getRecoveryCodes($user);
+        }
+
+        $sessions = $user->loginDevices()->limit(5)->get();
+
+        activity('profile')
+            ->causedBy($user)
+            ->withProperties(['page' => 'nusrath_profile', 'ip' => $request->ip()])
+            ->log('Accessed Nusrath Senior Investigator profile page');
+
+        return view('profile.nusrath_profile', compact('user', 'qrCodeSvg', 'recoveryCodes', 'sessions'));
     }
 
     /**

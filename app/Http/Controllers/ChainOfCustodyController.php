@@ -231,6 +231,7 @@ class ChainOfCustodyController extends Controller
         $validated = $request->validate([
             'notes'    => ['nullable', 'string', 'max:2000'],
             'location' => ['required', 'string', 'max:255'],
+            'purpose'  => ['nullable', 'string', 'in:court,lab,review,other'],
         ]);
 
         ChainOfCustody::transfer(
@@ -242,9 +243,15 @@ class ChainOfCustodyController extends Controller
             location: $validated['location'],
         );
 
-        // Update status to in_review if currently active
+        // Update status based on checkout purpose
         if ($evidence->status === 'active') {
-            $evidence->update(['status' => 'in_review']);
+            // If checking out for court, mark as admitted
+            if (isset($validated['purpose']) && $validated['purpose'] === 'court') {
+                $evidence->update(['status' => 'admitted']);
+            } else {
+                // Otherwise, mark as in_review (lab analysis, general review, etc.)
+                $evidence->update(['status' => 'in_review']);
+            }
         }
 
         activity('chain_of_custody')
@@ -253,6 +260,7 @@ class ChainOfCustodyController extends Controller
             ->withProperties([
                 'case_number' => $evidence->case_number,
                 'location'    => $validated['location'],
+                'purpose'     => $validated['purpose'] ?? 'other',
                 'ip'          => $request->ip(),
             ])
             ->log("Evidence checked out by {$user->name} at {$validated['location']}");
