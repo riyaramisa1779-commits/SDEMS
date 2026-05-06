@@ -227,11 +227,18 @@ class ChainOfCustodyController extends Controller
             'Only the current custodian can check out evidence.'
         );
         abort_if($evidence->isLocked(), 403, 'Locked evidence cannot be checked out.');
+        
+        // Prevent checkout of pending evidence (hash not yet calculated)
+        abort_if(
+            $evidence->status === 'pending',
+            403,
+            'Evidence is still pending hash calculation. Please wait a moment and try again.'
+        );
 
         $validated = $request->validate([
             'notes'    => ['nullable', 'string', 'max:2000'],
             'location' => ['required', 'string', 'max:255'],
-            'purpose'  => ['nullable', 'string', 'in:court,lab,review,other'],
+            'purpose'  => ['required', 'string', 'in:court,lab,review,other'],
         ]);
 
         ChainOfCustody::transfer(
@@ -244,14 +251,12 @@ class ChainOfCustodyController extends Controller
         );
 
         // Update status based on checkout purpose
-        if ($evidence->status === 'active') {
-            // If checking out for court, mark as admitted
-            if (isset($validated['purpose']) && $validated['purpose'] === 'court') {
-                $evidence->update(['status' => 'admitted']);
-            } else {
-                // Otherwise, mark as in_review (lab analysis, general review, etc.)
-                $evidence->update(['status' => 'in_review']);
-            }
+        // If checking out for court, mark as admitted
+        if ($validated['purpose'] === 'court') {
+            $evidence->update(['status' => 'admitted']);
+        } else {
+            // Otherwise, mark as in_review (lab analysis, general review, etc.)
+            $evidence->update(['status' => 'in_review']);
         }
 
         activity('chain_of_custody')
@@ -260,7 +265,7 @@ class ChainOfCustodyController extends Controller
             ->withProperties([
                 'case_number' => $evidence->case_number,
                 'location'    => $validated['location'],
-                'purpose'     => $validated['purpose'] ?? 'other',
+                'purpose'     => $validated['purpose'],
                 'ip'          => $request->ip(),
             ])
             ->log("Evidence checked out by {$user->name} at {$validated['location']}");

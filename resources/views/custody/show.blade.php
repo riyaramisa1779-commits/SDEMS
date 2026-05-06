@@ -296,7 +296,7 @@
                 @php
                     $isCustodian = $evidence->assigned_to === auth()->id();
                     $isAdmin = auth()->user()->rank >= 8;
-                    $canAct = ($isCustodian || $isAdmin) && !$evidence->isLocked();
+                    $canAct = ($isCustodian || $isAdmin) && !$evidence->isLocked() && $evidence->status !== 'pending';
                 @endphp
 
                 @if($canAct)
@@ -344,6 +344,18 @@
                             <p class="text-xs text-emerald-600 dark:text-emerald-400">Return evidence to storage</p>
                         </div>
                     </button>
+                </div>
+                @elseif($evidence->status === 'pending')
+                <div class="card p-5">
+                    <div class="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+                        <svg class="w-5 h-5 flex-shrink-0 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <div>
+                            <p class="text-sm font-semibold">Hash Calculation in Progress</p>
+                            <p class="text-xs mt-0.5">Evidence is being processed. Custody actions will be available once status changes to <strong>Active</strong>.</p>
+                        </div>
+                    </div>
                 </div>
                 @elseif($evidence->isLocked())
                 <div class="card p-5">

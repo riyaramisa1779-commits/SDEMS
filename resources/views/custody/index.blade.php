@@ -112,7 +112,7 @@
                             $sc = $statusColors[$item->status] ?? 'badge-gray';
                             $isCustodian = $item->assigned_to === auth()->id();
                             $isAdmin     = auth()->user()->rank >= 8;
-                            $canAct      = ($isCustodian || $isAdmin) && !$item->isLocked();
+                            $canAct      = ($isCustodian || $isAdmin) && !$item->isLocked() && $item->status !== 'pending';
                         @endphp
                         <tr>
                             {{-- Case Number --}}
